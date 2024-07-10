@@ -12,7 +12,6 @@ import { type HttpError, useApiUrl } from "@refinedev/core";
 
 export const DocumentosVeiculoCreate: React.FC = () => {
     const [isUploadLoading, setIsUploadLoading] = useState(false);
-    const apiUrl = useApiUrl();
 
     const {
         saveButtonProps,
