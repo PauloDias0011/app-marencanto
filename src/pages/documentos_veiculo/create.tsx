@@ -1,14 +1,11 @@
 import { Create, useAutocomplete } from "@refinedev/mui";
 import { Box, TextField, Autocomplete, Stack, Input, Typography } from "@mui/material";
 import { useForm } from "@refinedev/react-hook-form";
-import { Controller } from "react-hook-form";
 import { LoadingButton } from "@mui/lab";
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useState } from "react";
-import axios from "axios";
-import { type HttpError, useApiUrl } from "@refinedev/core";
-
-
+import { supabaseClient } from './../../utility/supabaseClient'; 
+import { Controller } from "react-hook-form";
 
 export const DocumentosVeiculoCreate: React.FC = () => {
     const [isUploadLoading, setIsUploadLoading] = useState(false);
@@ -33,52 +30,49 @@ export const DocumentosVeiculoCreate: React.FC = () => {
         resource: "categorias",
     });
 
+    const sanitizeFileName = (fileName: string) => {
+        return fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    };
+
     const onChangeHandler = async (
         event: React.ChangeEvent<HTMLInputElement>,
-      ) => {
+    ) => {
         try {
-          setIsUploadLoading(true);
-    
-          const formData = new FormData();
-    
-          const target = event.target;
-          const file: File = (target.files as FileList)[0];
-    
-          formData.append("file", file);
-    
-          const res = await axios.post<{ url: string }>(
-            `${apiUrl}/media/uploads`,
-            formData,
-            {
-              withCredentials: false,
-              headers: {
-                "Access-Control-Allow-Origin": "*",
-              },
-            },
-          );
-    
-          const { name, size, type, lastModified } = file;
-    
-          const filePaylod = [
-            {
-              name,
-              size,
-              type,
-              lastModified,
-              url: res.data.url,
-            },
-          ];
-    
-          setValue("filepath", filePaylod, { shouldValidate: true });
-    
-          setIsUploadLoading(false);
+            setIsUploadLoading(true);
+
+            const target = event.target;
+            const file: File = (target.files as FileList)[0];
+            const sanitizedFileName = sanitizeFileName(file.name);
+
+            // Use o cliente Supabase para fazer o upload do arquivo para o bucket
+            const { data, error } = await supabaseClient.storage
+                .from('uploads') // Substitua pelo nome do seu bucket
+                .upload(`uploads/${sanitizedFileName}`, file);
+
+            if (error) {
+                throw error;
+            }
+
+            const { name, size, type, lastModified } = file;
+
+            const filePayload = [
+                {
+                    name: sanitizedFileName,
+                    size,
+                    type,
+                    lastModified,
+                    url: data?.path, // Substitua 'data?.path' pela chave correta, se necessário
+                },
+            ];
+
+            setValue("filepath", filePayload, { shouldValidate: true });
+
+            setIsUploadLoading(false);
         } catch (error) {
-          setError("filepath", { message: "Falho no upload. Tente novamente" });
-          setIsUploadLoading(false);
+            setError("filepath", { message: "Falha no upload. Tente novamente" });
+            setIsUploadLoading(false);
         }
-      };
-    
-    
+    };
 
     return (
         <Create isLoading={formLoading} saveButtonProps={saveButtonProps}>
@@ -91,7 +85,6 @@ export const DocumentosVeiculoCreate: React.FC = () => {
                     control={control}
                     name="categorias_id"
                     rules={{ required: "This field is required" }}
-                    // eslint-disable-next-line
                     defaultValue={null as any}
                     render={({ field }) => (
                         <Autocomplete
@@ -131,12 +124,6 @@ export const DocumentosVeiculoCreate: React.FC = () => {
                     )}
                 />
 
-                {/*
-                    DatePicker component is not included in "@refinedev/mui" package.
-                    To use a <DatePicker> component, you can follow the official documentation for Material UI.
-
-                    Docs: https://mui.com/x/react-date-pickers/date-picker/#basic-usage
-                */}
                 <TextField
                     {...register("data_vencimento", {
                         required: "This field is required",
@@ -153,7 +140,6 @@ export const DocumentosVeiculoCreate: React.FC = () => {
                     control={control}
                     name="veiculo_id"
                     rules={{ required: "This field is required" }}
-                    // eslint-disable-next-line
                     defaultValue={null as any}
                     render={({ field }) => (
                         <Autocomplete
@@ -188,12 +174,8 @@ export const DocumentosVeiculoCreate: React.FC = () => {
                                     }
                                     required
                                 />
-
                             )}
-
-
                         />
-
                     )}
                 />
                 <Stack
@@ -227,9 +209,9 @@ export const DocumentosVeiculoCreate: React.FC = () => {
                                 Upload do Arquivo
                             </LoadingButton>
                             <br />
-                            {errors.images && (
+                            {errors.filepath && (
                                 <Typography variant="caption" color="#fa541c">
-                                    {errors.images?.message?.toString()}
+                                    {errors.filepath?.message?.toString()}
                                 </Typography>
                             )}
                         </label>
@@ -245,12 +227,7 @@ export const DocumentosVeiculoCreate: React.FC = () => {
                         )}
                     </>
                 </Stack>
-
             </Box>
         </Create>
     );
 };
-function setIsUploadLoading(arg0: boolean) {
-    throw new Error("Function not implemented.");
-}
-
