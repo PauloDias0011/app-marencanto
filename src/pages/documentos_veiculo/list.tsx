@@ -22,7 +22,7 @@ export const DocumentosVeiculoList = () => {
         },
     });
 
-    const { data: categoriaData, isLoading:categoriaIsLoading } = useMany({
+    const { data: categoriaData, isLoading: categoriaIsLoading } = useMany({
         resource: "categorias",
         ids: dataGridProps?.rows?.map((item: any) => item?.categorias_id) ?? [],
         queryOptions: {
@@ -30,21 +30,15 @@ export const DocumentosVeiculoList = () => {
         },
     });
 
-
     const columns = React.useMemo<GridColDef[]>(
         () => [
-            {
-                field: "id",
-                headerName: "Id",
-                minWidth: 50,
-            },
 
             {
                 field: "data_vencimento",
                 flex: 1,
                 headerName: "Data Vencimento",
                 minWidth: 250,
-                renderCell: function render({ value }) {
+                renderCell: function RenderDateCell({ value }) {
                     return <DateField value={value} />;
                 },
             },
@@ -53,12 +47,11 @@ export const DocumentosVeiculoList = () => {
                 flex: 1,
                 headerName: "Veiculo",
                 minWidth: 300,
-                renderCell: function render({ value }) {
+                renderCell: function RenderVeiculoCell({ value }) {
                     return veiculoIsLoading ? (
                         <>Carregando...</>
                     ) : (
-                        veiculoData?.data?.find((item) => item.id === value)
-                            ?.placa
+                        veiculoData?.data?.find((item) => item.id === value)?.placa
                     );
                 },
             },
@@ -67,12 +60,11 @@ export const DocumentosVeiculoList = () => {
                 flex: 1,
                 headerName: "Tipo do Documento",
                 minWidth: 300,
-                renderCell: function render({ value }) {
+                renderCell: function RenderCategoriaCell({ value }) {
                     return categoriaIsLoading ? (
                         <>Carregando...</>
                     ) : (
-                        categoriaData?.data?.find((item) => item.id === value)
-                            ?.nome
+                        categoriaData?.data?.find((item) => item.id === value)?.nome
                     );
                 },
             },
@@ -81,17 +73,36 @@ export const DocumentosVeiculoList = () => {
                 flex: 1,
                 headerName: "Arquivo",
                 minWidth: 300,
-                renderCell: function render({ row }) {
-                    return (
-                      <FileField src={row.filepath[0].url} target="_blank" rel="noopener" />
-                    );
-                  },
+                renderCell: function RenderFileCell({ row }) {            
+                    let filepathArray;
+                    try {
+                        filepathArray = JSON.parse(row.filepath);
+                    } catch (error) {
+                        return null;
+                    }
+                    if (filepathArray && Array.isArray(filepathArray) && filepathArray.length > 0) {
+                        const file = filepathArray[0];            
+                        if (file && file.url) {
+                            return (
+                                <FileField 
+                                src={"https://nddriileedipfwesgiaa.supabase.co/storage/v1/object/public/uploads/"+file.url}
+                                title="Acessar Arquivo"
+                                target="_blank" 
+                                rel="noopener"
+                                />
+                            );
+                        } 
+                    } 
+            
+                    return null;
+                },
+            
             },
             {
                 field: "actions",
                 headerName: "Actions",
                 sortable: false,
-                renderCell: function render({ row }) {
+                renderCell: function RenderActionsCell({ row }) {
                     return (
                         <>
                             <EditButton hideText recordItemId={row.id} />
@@ -105,7 +116,7 @@ export const DocumentosVeiculoList = () => {
                 minWidth: 80,
             },
         ],
-        [veiculoData?.data],
+        [veiculoData?.data, categoriaData?.data]
     );
 
     return (
